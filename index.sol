@@ -45,45 +45,45 @@ contract Mosquito is ERC20 {
         maxTxSet = true; // Set the flag
     }
 
-    function transfer(address recipient, uint256 amount) external override returns (bool) {
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
         _transfer(msg.sender, recipient, amount);
         return true;
     }
 
-    function transferFrom(address sender, address recipient, uint256 amount) external override returns (bool) {
+    function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
         _transfer(sender, recipient, amount);
         _approve(sender, msg.sender, allowance(sender, msg.sender) - amount);
         return true;
     }
 
-    function _transfer(address sender, address recipient, uint256 amount) private {
-        require(sender != address(0), "Transfer from the zero address");
-        require(recipient != address(0), "Transfer to the zero address");
-        require(amount <= balanceOf(sender), "Transfer amount exceeds balance");
-        
-        // Check if maxTxEnabled is set and apply max transaction limit if enabled
-        if (maxTxEnabled && !_isExcludedFromMaxTx[sender] && !_isExcludedFromMaxTx[recipient]) {
-            require(amount <= maxTxAmount, "Transfer amount exceeds the max transaction amount");
-        }
-        
-        // Check if sender or recipient is excluded from fees
-        bool takeFee = !_isExcludedFromFees[sender] && !_isExcludedFromFees[recipient];
-        
-        // Calculate taxes if applicable
-        if (takeFee) {
-            uint256 taxAmount = amount * taxFee / 100;
-            uint256 liquidityAmount = amount * liquidityFee / 100;
-            uint256 tokensToTransfer = amount - taxAmount - liquidityAmount;
-
-            // Transfer tokens
-            _transfer(sender, recipient, tokensToTransfer);
-            _transfer(sender, liquidityPool, liquidityAmount);
-            _transfer(sender, address(this), taxAmount);
-        } else {
-            // Transfer tokens without tax
-            _transfer(sender, recipient, amount);
-        }
+function _transferTokens(address sender, address recipient, uint256 amount) private {
+    require(sender != address(0), "Transfer from the zero address");
+    require(recipient != address(0), "Transfer to the zero address");
+    require(amount <= balanceOf(sender), "Transfer amount exceeds balance");
+    
+    // Check if maxTxEnabled is set and apply max transaction limit if enabled
+    if (maxTxEnabled && !_isExcludedFromMaxTx[sender] && !_isExcludedFromMaxTx[recipient]) {
+        require(amount <= maxTxAmount, "Transfer amount exceeds the max transaction amount");
     }
+    
+    // Check if sender or recipient is excluded from fees
+    bool takeFee = !_isExcludedFromFees[sender] && !_isExcludedFromFees[recipient];
+    
+    // Calculate taxes if applicable
+    if (takeFee) {
+        uint256 taxAmount = amount * taxFee / 100;
+        uint256 liquidityAmount = amount * liquidityFee / 100;
+        uint256 tokensToTransfer = amount - taxAmount - liquidityAmount;
+
+        // Transfer tokens
+        _transfer(sender, recipient, tokensToTransfer);
+        _transfer(sender, liquidityPool, liquidityAmount);
+        _transfer(sender, address(this), taxAmount);
+    } else {
+        // Transfer tokens without tax
+        _transfer(sender, recipient, amount);
+    }
+}
 
     function addToFeeWhitelist(address account) external onlyOwner {
         _isExcludedFromFees[account] = true;
